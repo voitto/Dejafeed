@@ -8,6 +8,7 @@ Installation
 
 npm install weld
 npm install express
+mkdir data
 node deja.js
 
 Roadmap
