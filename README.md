@@ -6,10 +6,9 @@ mini feed reader/writer
 Installation
 ============
 
-npm install weld
-npm install express
-mkdir data
-node deja.js
+  * npm install weld, express, feedparser, request, validator
+  * mkdir data
+  * node deja.js
 
 Roadmap
 ============
@@ -17,6 +16,10 @@ Roadmap
   * bookmarklet to subscribe
   * back-end for data
   * front-end
+
+
+
+
 
 > Art attracts us
 > only by what it reveals

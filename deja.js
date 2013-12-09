@@ -4,7 +4,9 @@ var express = require('express'),
   fs = require('fs'),
   jsdom = require('jsdom'),
   http = require('http'),
-  url = require('url');
+  url = require('url'),
+  FeedParser = require('feedparser'),
+  request = require('request');
 
 port = process.argv[2] || 8000;
 
@@ -12,19 +14,19 @@ app.use(express.bodyParser());
 
 app.get('/', function(req, res){
   function endit(res,posts){
-    res.end(JSON.stringify(posts));
     posts.sort(function(a,b){
-      return a.date - b.date;
+      return a.date + b.date;
     });
     var html = '';
     for (n in posts)
-      html = html + '<a href="'+posts[n].linkk+'">'+posts[n].title+'</a><BR>';
+      html = html + '<a href="'+posts[n].link+'">'+posts[n].title+'</a><BR>';
     res.setHeader('Content-Type', 'text/html');
     html = 'Dejafeed: <a href="/subscriptions">Subscriptions</a> <a href="/feed">Feed</a> <a href="/subscribe">Subscribe</a><BR>' + html;
     res.end(html);
   }
   var cbc = 0;
   var lim = 0;
+  var tit = 0;
   console.log('lim was '+lim.toString());
   jsdom.env(
     './data/subs.opml', 
@@ -34,41 +36,25 @@ app.get('/', function(req, res){
       var posts = [];
       window1.$('body .outline').each(function( index, element ) {
         var endpoint = window1.$( element ).attr('url');
-        var parsed = url.parse(endpoint);
-        var port = 80;
-        if (!(null == parsed.port))
-          port = parsed.port;
-        var options = {
-          host: parsed.hostname,
-          path: parsed.path,
-          port: port
-        };
-        callback = function(response) {
-          var str = ''
-          response.on('data', function (chunk) {
-            str += chunk;
+        request(endpoint)
+          .pipe(new FeedParser([]))
+          .on('error', function(error) {
+          })
+          .on('meta', function (meta) {
+          })
+          .on('data', function (item) {
+            tit++;
+            console.log(item.title);
+              var title = item.title;
+              var link = item.link;
+              var date = Date.parse(item.pubdate);
+              posts.push({title:title,link:link,date:date});
+          })
+          .on('end',function(){
+            cbc++;
+            if (cbc == lim)
+              endit(res,posts);
           });
-          response.on('end', function () {
-            jsdom.env(
-              str, 
-              ['../lib/jquery.js'],
-              function(errors,window) {
-                window.$('item').each(function( index, element ) {
-                  var title = window.$( element ).find('title').html();
-                  var link = window.$( element ).find('link').html();
-                  var date = Date.parse(window.$( element ).find('pubDate').html());
-                  posts.push({title:title,link:link,date:date});
-                  //html = html + '<a href="'+link+'">'+title+'</a> '+date+'<BR>';
-                });
-                cbc++;
-                if (cbc == lim)
-                  endit(res,posts);
-              }
-            );
-          });
-        }
-        var req = http.request(options, callback);
-        req.end();
       });
     }
   );
