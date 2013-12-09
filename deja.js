@@ -21,13 +21,11 @@ app.get('/', function(req, res){
     for (n in posts)
       html = html + '<a href="'+posts[n].link+'">'+posts[n].title+'</a><BR>';
     res.setHeader('Content-Type', 'text/html');
-    html = 'Dejafeed: <a href="/subscriptions">Subscriptions</a> <a href="/feed">Feed</a> <a href="/subscribe">Subscribe</a><BR>' + html;
+    html = 'Dejafeed: <a href="/subscriptions">Subscriptions</a> <a href="/feed">Feed</a> <a href="/subscribe">Subscribe</a> <a href="/post">Post</a><BR><BR>' + html;
     res.end(html);
   }
   var cbc = 0;
   var lim = 0;
-  var tit = 0;
-  console.log('lim was '+lim.toString());
   jsdom.env(
     './data/subs.opml', 
     ['../lib/jquery.js'],
@@ -43,7 +41,6 @@ app.get('/', function(req, res){
           .on('meta', function (meta) {
           })
           .on('data', function (item) {
-            tit++;
             console.log(item.title);
               var title = item.title;
               var link = item.link;
@@ -105,36 +102,74 @@ app.post('/subscribe', function(req, res){
   }
 });
 
+app.post('/post', function(req, res){
+  if ( fs.existsSync('./data/posts.rss')) {
+    // append to posts.rss
+    jsdom.env(
+      './data/posts.rss', 
+      ['../lib/jquery.js', '../lib/weld.js'],
+      function(errors, window1) {
+        var data = [{ title: req.body.title, link:'http://megapump.com' }];
+        window1.$('rss .item').each(function( index, element ) {
+          data.push({ title: window1.$( element ).find('title').html(),
+                     link: window1.$( element ).find('link').html()});
+        });
+        window1.weld(window1.$('item')[0], data);
+//        window1.$('rss .item').each(function( index, element ) {
+//          window1.$( element ).attr('title', window1.$( element ).text());
+//        });
+        fs.writeFile('./data/posts.rss', '\
+<?xml version="1.0"?>\
+<rss version="2.0" xmlns:rss5="http://rss5.org/">'+
+          window.$('rss').html()+
+          '</rss>');
+        res.end('<p>posted</p><a href="/">home</a>');
+      }
+    );
+  } else {
+    // create subs.opml
+    jsdom.env(
+      './rss.tpl', 
+      ['./lib/jquery.js', './lib/weld.js'],
+      function(errors, window) {
+        var data = [{ title: req.body.title, link:'http://megapump.com' }];
+        window.weld(window.$('item')[0], data);
+        fs.writeFile('./data/posts.rss', '\
+<?xml version="1.0"?>\
+<rss version="2.0" xmlns:rss5="http://rss5.org/">'+
+        window.$('rss').html()+
+        '</rss>');
+        res.end('<p>posted</p><a href="/">home</a>');
+      }
+    );
+  }
+});
+
+
+app.get('/post', function(req, res){
+  res.setHeader('Content-Type', 'text/html');
+  res.end('<form method="post" action="/post">Title: <input name="title" type="text" /><input type="submit" value="Post" /></form>');
+});
+
 app.get('/subscribe', function(req, res){
   res.setHeader('Content-Type', 'text/html');
-  res.end('<form method="post" action="/subscribe">HTML or XML URL: <input name="suburl" type="text" /><input type="submit" value="Subscribe" /></form>');
+  res.end('<form method="post" action="/subscribe">FEED URL: <input name="suburl" type="text" /><input type="submit" value="Subscribe" /></form>');
 });
 
 app.get('/subscriptions', function(req, res){
   if ( fs.existsSync('./data/subs.opml')) {
-  res.end(fs.readFileSync('./data/subs.opml'));
+    res.end(fs.readFileSync('./data/subs.opml'));
   } else {
     res.end('no subscriptions yet');
   }
 });
 
 app.get('/feed', function(req, res){
-  jsdom.env(
-    './rss.tpl', 
-    ['./lib/jquery.js', './lib/weld.js'],
-    function(errors, window) {
-      var data = [{ title: 'bozo',  link : 'linke1' },
-                  { title: 'yolo', link : 'link2' }];
-      window.weld(window.$('item')[0], data, {insert:function(parent, element){
-            parent.insertBefore(element, parent.firstChild);
-      }});
-      res.send('\
-<?xml version="1.0"?>\
-<rss version="2.0" xmlns:rss5="http://rss5.org/">'+
-        window.$('rss').html()+
-        '</rss>');
-    }
-  );
+  if ( fs.existsSync('./data/subs.opml')) {
+    res.end(fs.readFileSync('./data/posts.rss'));
+  } else {
+    res.end('no posts yet');
+  }
 });
 
 app.listen(port);
