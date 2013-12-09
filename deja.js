@@ -165,7 +165,7 @@ app.get('/subscriptions', function(req, res){
 });
 
 app.get('/feed', function(req, res){
-  if ( fs.existsSync('./data/subs.opml')) {
+  if ( fs.existsSync('./data/posts.rss')) {
     res.end(fs.readFileSync('./data/posts.rss'));
   } else {
     res.end('no posts yet');
