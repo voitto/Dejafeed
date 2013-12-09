@@ -1,4 +1,6 @@
 
+var host = 'http://localhost:8000';
+
 var express = require('express'),
   app = express(),
   fs = require('fs'),
@@ -20,8 +22,9 @@ app.get('/', function(req, res){
     var html = '';
     for (n in posts)
       html = html + '<a href="'+posts[n].link+'">'+posts[n].title+'</a><BR>';
+    var form = '<form method="post" action="/post">Title: <input name="title" type="text" /><input type="submit" value="Post" /></form>';
     res.setHeader('Content-Type', 'text/html');
-    html = 'Dejafeed: <a href="/subscriptions">Subscriptions</a> <a href="/feed">Feed</a> <a href="/subscribe">Subscribe</a> <a href="/post">Post</a><BR><BR>' + html;
+    html = 'Dejafeed: <a href="/subs.opml">Subscriptions</a> <a href="/posts.rss">Feed</a> <a href="/subscribe">Subscribe</a><BR><BR>' + form + html;
     res.end(html);
   }
   var cbc = 0;
@@ -101,53 +104,63 @@ app.post('/subscribe', function(req, res){
   }
 });
 
+app.get('/posts/:id.html', function (req, res) {
+  var ff = './data/posts/'+req.params.id+'.html';
+  if ( fs.existsSync(ff)) {
+    res.end(fs.readFileSync(ff));
+  } else {
+    res.end('post not found');
+  }
+})
+
 app.post('/post', function(req, res){
+  function writePost(id,data) {
+         fs.writeFile('./data/posts/'+id+'.html', data);
+  }
   if ( fs.existsSync('./data/posts.rss')) {
     // append to posts.rss
     jsdom.env(
       './data/posts.rss', 
       ['../lib/jquery.js', '../lib/weld.js'],
       function(errors, window1) {
-        var data = [{ title: req.body.title, link:'http://megapump.com' }];
+        var data = [];
+        var guid = 0;
         window1.$('item').each(function( index, element ) {
+          var thisguid = parseInt(window1.$( element ).find('guid').html());
+          if (thisguid >= guid)
+            guid = thisguid+1;
           data.push({ title: window1.$( element ).find('title').html(),
-                     link: window1.$( element ).find('link').html()});
+                     link: window1.$( element ).find('link').html(), guid:thisguid});
         });
+        data.push({ title: req.body.title, link:host+'/posts/'+guid+'.html', guid:guid });
         window1.weld(window1.$('item')[0], data);
-//        window1.$('rss .item').each(function( index, element ) {
-//          window1.$( element ).attr('title', window1.$( element ).text());
-//        });
         fs.writeFile('./data/posts.rss', '\
 <?xml version="1.0"?>\
 <rss version="2.0" xmlns:rss5="http://rss5.org/">'+
           window1.$('rss').html()+
           '</rss>');
+        writePost(guid,req.body.title);
         res.end('<p>posted</p><a href="/">home</a>');
       }
     );
   } else {
-    // create subs.opml
+    // create posts.rss
     jsdom.env(
       './rss.tpl', 
       ['./lib/jquery.js', './lib/weld.js'],
       function(errors, window) {
-        var data = [{ title: req.body.title, link:'http://megapump.com' }];
+        var data = [{ title: req.body.title, link:host+'/posts/1.html', guid:1 }];
         window.weld(window.$('item')[0], data);
         fs.writeFile('./data/posts.rss', '\
 <?xml version="1.0"?>\
 <rss version="2.0" xmlns:rss5="http://rss5.org/">'+
         window.$('rss').html()+
         '</rss>');
+        writePost(1,req.body.title);
         res.end('<p>posted</p><a href="/">home</a>');
       }
     );
   }
-});
-
-
-app.get('/post', function(req, res){
-  res.setHeader('Content-Type', 'text/html');
-  res.end('<form method="post" action="/post">Title: <input name="title" type="text" /><input type="submit" value="Post" /></form>');
 });
 
 app.get('/subscribe', function(req, res){
@@ -155,7 +168,7 @@ app.get('/subscribe', function(req, res){
   res.end('<form method="post" action="/subscribe">FEED URL: <input name="suburl" type="text" /><input type="submit" value="Subscribe" /></form>');
 });
 
-app.get('/subscriptions', function(req, res){
+app.get('/subs.opml', function(req, res){
   if ( fs.existsSync('./data/subs.opml')) {
     res.end(fs.readFileSync('./data/subs.opml'));
   } else {
@@ -163,7 +176,7 @@ app.get('/subscriptions', function(req, res){
   }
 });
 
-app.get('/feed', function(req, res){
+app.get('/posts.rss', function(req, res){
   if ( fs.existsSync('./data/posts.rss')) {
     res.end(fs.readFileSync('./data/posts.rss'));
   } else {

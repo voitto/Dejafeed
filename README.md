@@ -8,6 +8,7 @@ Installation
 
   * npm install weld, express, feedparser, request, validator
   * mkdir data
+  * mkdir data/posts
   * node deja.js
 
 Roadmap
