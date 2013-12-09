@@ -41,7 +41,6 @@ app.get('/', function(req, res){
           .on('meta', function (meta) {
           })
           .on('data', function (item) {
-            console.log(item.title);
               var title = item.title;
               var link = item.link;
               var date = Date.parse(item.pubdate);
@@ -110,7 +109,7 @@ app.post('/post', function(req, res){
       ['../lib/jquery.js', '../lib/weld.js'],
       function(errors, window1) {
         var data = [{ title: req.body.title, link:'http://megapump.com' }];
-        window1.$('rss .item').each(function( index, element ) {
+        window1.$('item').each(function( index, element ) {
           data.push({ title: window1.$( element ).find('title').html(),
                      link: window1.$( element ).find('link').html()});
         });
@@ -121,7 +120,7 @@ app.post('/post', function(req, res){
         fs.writeFile('./data/posts.rss', '\
 <?xml version="1.0"?>\
 <rss version="2.0" xmlns:rss5="http://rss5.org/">'+
-          window.$('rss').html()+
+          window1.$('rss').html()+
           '</rss>');
         res.end('<p>posted</p><a href="/">home</a>');
       }
