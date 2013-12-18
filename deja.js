@@ -115,7 +115,19 @@ app.get('/posts/:id.html', function (req, res) {
 
 app.post('/post', function(req, res){
   function writePost(id,data) {
-         fs.writeFile('./data/posts/'+id+'.html', data);
+    jsdom.env(
+      './html.tpl', 
+      ['./lib/jquery.js', './lib/weld.js'],
+      function(errors, window) {
+        window.weld(window.$('h1')[0], data);
+        fs.writeFile('./data/posts/'+id+'.html', '\
+<html>'+
+        window.$('html').html()+
+        '</html>');
+        writePost(1,req.body.title);
+        res.end('<p>posted</p><a href="/">home</a>');
+      }
+    );
   }
   if ( fs.existsSync('./data/posts.rss')) {
     // append to posts.rss
@@ -132,14 +144,15 @@ app.post('/post', function(req, res){
           data.push({ title: window1.$( element ).find('title').html(),
                      link: window1.$( element ).find('link').html(), guid:thisguid});
         });
-        data.push({ title: req.body.title, link:host+'/posts/'+guid+'.html', guid:guid });
+        var newpost = { title: req.body.title, link:host+'/posts/'+guid+'.html', guid:guid };
+        data.push(newpost);
         window1.weld(window1.$('item')[0], data);
         fs.writeFile('./data/posts.rss', '\
 <?xml version="1.0"?>\
 <rss version="2.0" xmlns:rss5="http://rss5.org/">'+
           window1.$('rss').html()+
           '</rss>');
-        writePost(guid,req.body.title);
+        writePost(guid,newpost);
         res.end('<p>posted</p><a href="/">home</a>');
       }
     );
@@ -149,14 +162,15 @@ app.post('/post', function(req, res){
       './rss.tpl', 
       ['./lib/jquery.js', './lib/weld.js'],
       function(errors, window) {
-        var data = [{ title: req.body.title, link:host+'/posts/1.html', guid:1 }];
+        var newpost = { title: req.body.title, link:host+'/posts/1.html', guid:1 };
+        var data = [newpost];
         window.weld(window.$('item')[0], data);
         fs.writeFile('./data/posts.rss', '\
 <?xml version="1.0"?>\
 <rss version="2.0" xmlns:rss5="http://rss5.org/">'+
         window.$('rss').html()+
         '</rss>');
-        writePost(1,req.body.title);
+        writePost(1,newpost);
         res.end('<p>posted</p><a href="/">home</a>');
       }
     );

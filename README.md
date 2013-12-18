@@ -6,10 +6,11 @@ mini feed reader/writer
 Installation
 ============
 
-  * npm install weld, express, feedparser, request, validator
+  * npm install express feedparser request validator jsdom
   * mkdir data
   * mkdir data/posts
   * node deja.js
+  * http://localhost:8000 (or change 1st line of deja.js)
 
 Roadmap
 ============
